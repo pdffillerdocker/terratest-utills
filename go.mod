@@ -1,4 +1,4 @@
-module terratest_utills
+module github.com/pdffillerdocker/terratest-utills
 
 go 1.15
 
