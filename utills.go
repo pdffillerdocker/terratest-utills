@@ -15,10 +15,18 @@
 package terrutil
 
 import (
+    "testing"
+
     "strings"
     "fmt"
     "io/ioutil"
     "gopkg.in/yaml.v2"
+
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+
+    "github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/service/ec2"
 )
 
 func GetVarFromYamlFile (filename string, conf interface{}) (error) {
@@ -60,4 +68,41 @@ func MapStringToMapList(mapString map[string]string) (map[string][]string) {
 
     }
     return mapList
+}
+
+func GetTagsByResourceId(t *testing.T, svc *ec2.EC2, resourceId string) (map[string]string) {
+
+    ouput := make(map[string]string)
+
+    input := &ec2.DescribeTagsInput{
+        Filters: []*ec2.Filter{
+            {
+                Name: aws.String("resource-id"),
+                Values: []*string{
+                    aws.String(resourceId),
+                },
+            },
+        },
+    }
+
+    result, err := svc.DescribeTags(input)
+    if err != nil {
+        assert.FailNow(t, "getTagsByResourceId error: %v\n", err)
+        return nil
+    }
+
+    for _, tagitem := range result.Tags{
+        ouput[*tagitem.Key] = *tagitem.Value
+    }
+
+    return ouput
+}
+
+func CheckRequiredTags(t *testing.T, svc *ec2.EC2, resourceId string, tagList []string){
+
+    presentTags := GetTagsByResourceId(t, svc, resourceId)
+
+    for _, tagname := range tagList{
+        require.NotEmptyf(t, presentTags[tagname], "not foung tag %s", tagname)
+    }
 }
